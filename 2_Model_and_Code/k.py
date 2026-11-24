@@ -64,6 +64,70 @@ GENERIC_PREVENTION = [
 ]
 
 # =============================================================================
+# INSTANT BROWSER-SIDE MARATHI TRANSLATOR (ZERO API BLOCK)
+# =============================================================================
+import streamlit.components.v1 as components
+
+
+def inject_marathi_translator():
+    is_mr = st.session_state.get("lang") == "मराठी"
+    target_cookie = "/en/mr" if is_mr else "/en/en"
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            const parentDoc = window.parent.document;
+            const parentWin = window.parent;
+            document.cookie = "googtrans={target_cookie}; path=/";
+            parentDoc.cookie = "googtrans={target_cookie}; path=/";
+
+            if (!parentDoc.getElementById("google_translate_element")) {{
+                const div = parentDoc.createElement("div");
+                div.id = "google_translate_element";
+                div.style.display = "none";
+                parentDoc.body.appendChild(div);
+
+                const style = parentDoc.createElement("style");
+                style.innerHTML = ".goog-te-banner-frame, .skiptranslate {{ display: none !important; }} body {{ top: 0px !important; }}";
+                parentDoc.head.appendChild(style);
+
+                parentWin.googleTranslateElementInit = function() {{
+                    new parentWin.google.translate.TranslateElement({{
+                        pageLanguage: 'en',
+                        includedLanguages: 'en,mr',
+                        autoDisplay: false
+                    }}, 'google_translate_element');
+                }};
+
+                const s = parentDoc.createElement("script");
+                s.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+                parentDoc.body.appendChild(s);
+            }} else {{
+                const combo = parentDoc.querySelector(".goog-te-combo");
+                if (combo) {{
+                    combo.value = "{'mr' if is_mr else 'en'}";
+                    combo.dispatchEvent(new Event("change"));
+                }}
+            }}
+        }})();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+def tr_list(items):
+    return items
+
+
+def tr(text):
+    return text
+
+
+def t(key, fallback):
+    return fallback
+# =============================================================================
 # DISEASE KNOWLEDGE BASE
 # =============================================================================
 
@@ -1093,27 +1157,34 @@ def render_views(res):
         "</div>"
     )
 
-
 def render_report(crop, source, res, diag, info):
+    is_mr = st.session_state.get("lang") == "मराठी"
     zone, zcolor = diag["zone"], diag["zcolor"]
+    zone_disp = tr(zone) if is_mr else zone
     plan = build_plan(info, zone)
+
+    if is_mr:
+        plan["immediate"] = tr_list(plan["immediate"])
+        plan["organic"] = tr_list(plan["organic"])
+        plan["chemical"] = tr_list(plan["chemical"])
+        plan["prevention"] = tr_list(plan["prevention"])
 
     md(
         f'<div class="diag" style="--c:{zcolor}"><div class="diag-left"><div class="diag-ico">{info["icon"]}</div>'
         f'<div><div class="diag-eyebrow">Diagnosis for {esc(crop)}</div><div class="diag-name">{esc(diag["name"])}</div>'
         f'<div class="diag-sci">{esc(info["sci"])} | {esc(info["category"])}</div></div></div>'
-        f'<div class="pill big" style="--c:{zcolor}">{esc(zone)} zone</div></div>'
+        f'<div class="pill big" style="--c:{zcolor}">{esc(zone_disp)}</div></div>'
     )
 
     k1, k2, k3, k4 = st.columns(4, gap="medium")
     with k1:
-        md(kpi("🩺", "Detected Condition", esc(diag["name"]), f"Pattern: {esc(res['lesion_pattern'])} lesions", "#38BDF8", small=True))
+        md(kpi("🩺", t("detected_cond", "Detected Condition"), esc(diag["name"]), f"Pattern: {esc(res['lesion_pattern'])} lesions", "#38BDF8", small=True))
     with k2:
-        md(kpi("🔥", "Infection Severity", f"{res['severity']:.1f}%", f"{esc(zone)} zone | {res['lesion_total']} lesions", zcolor))
+        md(kpi("🔥", t("severity", "Infection Severity"), f"{res['severity']:.1f}%", f"{esc(zone_disp)} | {res['lesion_total']} lesions", zcolor))
     with k3:
-        md(kpi("🌿", "Healthy Tissue", f"{res['healthy']:.1f}%", "of detected leaf area", "#10B981"))
+        md(kpi("🌿", t("healthy_tissue", "Healthy Tissue"), f"{res['healthy']:.1f}%", "of detected leaf area", "#10B981"))
     with k4:
-        md(kpi("🎯", "Confidence Score", f"{diag['conf']:.0f}%", "heuristic evidence score", "#A78BFA"))
+        md(kpi("🎯", t("confidence", "Confidence Score"), f"{diag['conf']:.0f}%", "heuristic evidence score", "#A78BFA"))
 
     g1, g2 = st.columns([1.2, 1], gap="medium")
     with g1:
@@ -1127,23 +1198,23 @@ def render_report(crop, source, res, diag, info):
         secondary = f'<div class="muted" style="margin-top:8px">Also detected: {esc(", ".join(diag["secondary"]))}</div>'
     md(
         '<div class="grid2">'
-        f'<div class="card"><div class="h">What it looks like</div><div>{esc(info["symptoms"])}</div>{secondary}</div>'
-        f'<div class="card"><div class="h">Likely cause</div><div>{esc(info["causes"])}</div></div></div>'
+        f'<div class="card"><div class="h">{esc(t("what_looks", "What it looks like"))}</div><div>{esc(tr(info["symptoms"]))}</div>{secondary}</div>'
+        f'<div class="card"><div class="h">{esc(t("likely_cause", "Likely cause"))}</div><div>{esc(tr(info["causes"]))}</div></div></div>'
     )
 
-    section("🔍 Diagnostic Views", "How AgroGuard separated the leaf from the background and located the damage.")
+    section(t("diag_views", "🔍 Diagnostic Views"), "How AgroGuard separated the leaf from the background and located the damage.")
     render_views(res)
 
-    section("🧑‍🌾 Agronomist Treatment Plan", f"Recommended actions for {diag['name']} at {zone.lower()} severity.")
+    section(t("treat_plan", "🧑‍🌾 Agronomist Treatment Plan"), f"Recommended actions for {diag['name']} at {zone.lower()} severity.")
     md(
         '<div class="grid2">'
-        + plan_card("🚨", "Immediate Action", plan["immediate"], "#EF4444")
-        + plan_card("🌱", "Organic / Bio-Control Treatment", plan["organic"], "#10B981")
-        + plan_card("🧪", plan["chem_title"], plan["chemical"], "#F59E0B")
-        + plan_card("🛡️", "Preventive Measures for Surrounding Crops", plan["prevention"], "#38BDF8")
+        + plan_card("🚨", t("imm_action", "Immediate Action"), plan["immediate"], "#EF4444")
+        + plan_card("🌱", t("org_treat", "Organic / Bio-Control Treatment"), plan["organic"], "#10B981")
+        + plan_card("🧪", t("chem_treat", plan["chem_title"]), plan["chemical"], "#F59E0B")
+        + plan_card("🛡️", t("prev_treat", "Preventive Measures for Surrounding Crops"), plan["prevention"], "#38BDF8")
         + "</div>"
     )
-    alert("info", "Use chemicals responsibly", SAFETY_NOTE)
+    alert("info", t("safety_title", "Use chemicals responsibly"), t("safety_note", SAFETY_NOTE))
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     d1, d2, _ = st.columns([1, 1, 1])
@@ -1160,6 +1231,7 @@ def render_report(crop, source, res, diag, info):
             file_name=f"agroguard_report_{stamp}.txt", mime="text/plain", key="dl_report_txt",
         )
     st.caption("Tip: open the .html report in a browser and use Print > Save as PDF for a PDF copy.")
+
 
 
 def view_scanner():
@@ -1499,12 +1571,16 @@ def main():
     init_state()
     inject_css()
     render_hero()
-
+    _, lang_col = st.columns([3.5, 1.5])
+    with lang_col:
+        st.radio("🌐 Language", ["English", "मराठी"], horizontal=True, key="lang", label_visibility="collapsed")
+        inject_marathi_translator()
+    
     tabs = st.tabs([
-        "🔬 Live Leaf Scanner",
-        "📊 Multi-Image Field Batch Analysis",
-        "📚 Crop Disease Encyclopedia",
-        "ℹ️ System Architecture & About",
+        t("tab1", "🔬 Live Leaf Scanner"),
+        t("tab2", "📊 Multi-Image Field Batch Analysis"),
+        t("tab3", "📚 Crop Disease Encyclopedia"),
+        t("tab4", "ℹ️ System Architecture & About"),
     ])
     with tabs[0]:
         view_scanner()
