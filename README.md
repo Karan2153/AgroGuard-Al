@@ -2,6 +2,8 @@
 
 **FY B.Tech Engineering Design and Innovation (EDI) Project — VIT Pune**
 
+https://agroguard-al-gojd3fxsue5l9zmnjp43mx.streamlit.app/
+
 ## Problem Statement
 Farmers often struggle to identify crop diseases early and assess their infection severity accurately, leading to improper pesticide usage and significant yield loss. AgroGuard AI provides an automated image-based diagnosis, severity estimation, and actionable treatment recommendations.
 
