@@ -9,6 +9,7 @@ import base64
 import hashlib
 import html as html_lib
 import io
+import json
 import textwrap
 from collections import Counter
 from datetime import datetime
@@ -1157,7 +1158,739 @@ def render_views(res):
         "</div>"
     )
 
+
+def render_voice_reader():
+    """Browser-side voice reader for the AgroGuard AI diagnosis report.
+
+    - 100% client-side: window.parent.speechSynthesis, no extra Python packages.
+    - Reads the live (Google-Translate-translated) DOM, so the spoken language
+      always matches what is on screen.
+    - Tip: wrapping your report in <div id="agro-report"> ... </div> makes the
+      extraction exact. Without it, the reader auto-detects the report.
+    """
+    is_mr = st.session_state.get("lang") == "मराठी"
+
+    if is_mr:
+        cfg = {
+            "lang": "mr-IN",
+            "prefs": ["mr-in", "mr", "mar", "hi-in", "hi"],
+            "rate": 0.95,
+            "pct": "टक्के",
+            "degC": "अंश सेल्सिअस",
+            "and": "आणि",
+            "s": {
+                "play": "🔊 निदान ऐका",
+                "pause": "⏸️ थांबवा",
+                "resume": "▶️ पुन्हा सुरू करा",
+                "stop": "⏹️ बंद करा",
+                "ready": "अहवाल ऐकण्यास तयार",
+                "speaking": "वाचत आहे...",
+                "paused": "थांबवले",
+                "done": "वाचन पूर्ण झाले",
+                "noReport": "अद्याप निदान अहवाल सापडला नाही. आधी तपासणी करा.",
+                "unsupported": "या ब्राउझरमध्ये आवाज वाचन उपलब्ध नाही.",
+                "fallback": "मराठी आवाज उपलब्ध नाही. {name} ({lang}) वापरत आहे.",
+                "noVoice": "या भाषेसाठी आवाज आढळला नाही. ब्राउझरचा डिफॉल्ट आवाज वापरला जात आहे.",
+            },
+        }
+    else:
+        cfg = {
+            "lang": "en-IN",
+            "prefs": ["en-in", "en-gb", "en-us", "en"],
+            "rate": 0.95,
+            "pct": "percent",
+            "degC": "degrees Celsius",
+            "and": "and",
+            "s": {
+                "play": "🔊 Listen to Diagnosis",
+                "pause": "⏸️ Pause",
+                "resume": "▶️ Resume",
+                "stop": "⏹️ Stop",
+                "ready": "Ready to read your report",
+                "speaking": "Speaking...",
+                "paused": "Paused",
+                "done": "Finished reading",
+                "noReport": "No diagnosis report found yet. Run an analysis first.",
+                "unsupported": "Voice playback isn't supported in this browser.",
+                "fallback": "English (India) voice not found. Using {name} ({lang}).",
+                "noVoice": "No voice installed for this language. Using the browser default.",
+            },
+        }
+
+    template = r"""
+<!DOCTYPE html>
+<html lang="__HTML_LANG__" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --brand-300: #6ee7b7;
+    --brand-400: #34d399;
+    --brand-700: #047857;
+    --brand-800: #065f46;
+    --text-1: #ecf8f1;
+    --text-2: #b6cbc0;
+    --amber: #fbbf24;
+    --red: #fca5a5;
+    --r: 12px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    background: transparent;
+    color: var(--text-1);
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.panel {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 10px 0;
+    padding: 10px 12px 13px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: var(--r);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 14px rgba(0,0,0,0.30);
+    overflow: hidden;
+    transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+.panel[data-view="speaking"] {
+    border-color: rgba(52,211,153,0.45);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 18px rgba(16,185,129,0.20);
+}
+
+button {
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 40px;
+    padding: 6px 14px;
+    border-radius: var(--r);
+    cursor: pointer;
+    color: var(--text-1);
+    transition: transform .15s var(--ease), box-shadow .28s var(--ease),
+                background .28s var(--ease), border-color .28s var(--ease), opacity .2s;
+}
+button:active:not(:disabled) { transform: scale(0.97); }
+button:disabled { opacity: 0.42; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 2px; }
+
+.btn-primary {
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--brand-700), var(--brand-800));
+    border: 1px solid rgba(110,231,183,0.45);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 14px rgba(5,150,105,0.35);
+}
+.btn-primary:hover:not(:disabled) {
+    border-color: var(--brand-300);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px rgba(52,211,153,0.35), 0 6px 22px rgba(16,185,129,0.35);
+}
+.btn-ghost {
+    font-weight: 600;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.btn-ghost:hover:not(:disabled) {
+    background: rgba(52,211,153,0.14);
+    border-color: rgba(52,211,153,0.5);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 34px;
+    padding: 4px 12px;
+    border-radius: var(--r);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.6;
+    color: var(--text-2);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+}
+.panel[data-view="speaking"] .badge {
+    color: #a7f3d0;
+    background: rgba(16,185,129,0.14);
+    border-color: rgba(52,211,153,0.50);
+}
+.panel[data-view="paused"] .badge {
+    color: var(--amber);
+    background: rgba(251,191,36,0.10);
+    border-color: rgba(251,191,36,0.40);
+}
+.panel[data-view="done"] .badge {
+    color: #a7f3d0;
+}
+.panel[data-view="error"] .badge {
+    color: var(--red);
+    background: rgba(248,113,113,0.10);
+    border-color: rgba(248,113,113,0.40);
+}
+.count { font-size: 12px; font-weight: 500; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.count:empty { display: none; }
+
+/* Speaking indicator */
+.eq { display: none; align-items: flex-end; gap: 3px; height: 16px; }
+.eq i {
+    display: block; width: 3px; height: 100%;
+    background: var(--brand-400);
+    border-radius: 2px;
+    transform-origin: bottom;
+    transform: scaleY(0.3);
+    animation: eq 0.9s ease-in-out infinite;
+}
+.eq i:nth-child(2) { animation-delay: .15s; }
+.eq i:nth-child(3) { animation-delay: .30s; }
+.eq i:nth-child(4) { animation-delay: .45s; }
+.panel[data-view="speaking"] .eq,
+.panel[data-view="paused"] .eq { display: inline-flex; }
+.panel[data-view="paused"] .eq i { animation-play-state: paused; background: var(--amber); }
+@keyframes eq {
+    0%, 100% { transform: scaleY(0.25); }
+    50%      { transform: scaleY(1); }
+}
+
+.hint {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+.hint:empty { display: none; }
+
+.progress {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 3px; background: rgba(255,255,255,0.08);
+}
+.progress > div {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--brand-700), var(--brand-300));
+    transition: width .5s var(--ease);
+}
+
+@media (max-width: 520px) {
+    .panel { gap: 8px; padding: 9px 10px 12px; }
+    button { flex: 1 1 auto; }
+    .badge { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+    .eq i { transform: scaleY(0.6); }
+}
+</style>
+</head>
+<body class="notranslate">
+<div class="panel notranslate" id="panel" data-view="idle">
+    <button class="btn-primary" id="play" type="button"></button>
+    <button class="btn-ghost" id="pause" type="button" disabled></button>
+    <button class="btn-ghost" id="stop" type="button" disabled></button>
+    <span class="badge" id="badge" role="status" aria-live="polite">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span id="badge-text"></span>
+        <span class="count" id="count"></span>
+    </span>
+    <p class="hint" id="hint"></p>
+    <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+    const CFG = __CONFIG__;
+    const S = CFG.s;
+    const $ = (id) => document.getElementById(id);
+
+    const panel = $("panel"), btnPlay = $("play"), btnPause = $("pause"), btnStop = $("stop");
+    const badgeText = $("badge-text"), countEl = $("count"), hintEl = $("hint"), barEl = $("bar");
+
+    btnPlay.textContent = S.play;
+    btnPause.textContent = S.pause;
+    btnStop.textContent = S.stop;
+    btnPlay.setAttribute("aria-label", S.play.replace(/[^\p{L}\p{N}\s]/gu, "").trim());
+
+    // ---------- Parent access ----------
+    let parentWin = null, parentDoc = null, synth = null;
+    try {
+        parentWin = window.parent;
+        parentDoc = parentWin.document;
+        synth = parentWin.speechSynthesis || null;
+    } catch (e) { synth = null; }
+
+    // ---------- Auto-fit iframe height ----------
+    function fit() {
+        try {
+            const h = Math.max(56, Math.ceil(panel.getBoundingClientRect().height) + 18);
+            const fe = window.frameElement;
+            if (fe) { fe.style.height = h + "px"; fe.setAttribute("height", h); }
+        } catch (e) {}
+    }
+    if ("ResizeObserver" in window) new ResizeObserver(fit).observe(panel);
+    window.addEventListener("load", fit);
+
+    // ---------- State ----------
+    let state = "idle";           // idle | speaking | paused
+    let run = 0;                  // bumped on every start/stop to invalidate stale callbacks
+    let chunks = [], idx = 0;
+    let voiceCache = [], chosen = null;
+    let wd = null, advanceFn = null;
+
+    function setView(view, msg) {
+        state = (view === "speaking" || view === "paused") ? view : "idle";
+        panel.dataset.view = view;
+        badgeText.textContent = msg;
+        btnPlay.disabled = !synth;
+        btnPause.disabled = !(state === "speaking" || state === "paused");
+        btnStop.disabled = btnPause.disabled;
+        btnPause.textContent = state === "paused" ? S.resume : S.pause;
+        btnPause.setAttribute("aria-pressed", state === "paused" ? "true" : "false");
+        if (state === "idle") countEl.textContent = "";
+        fit();
+    }
+    function updateProgress() {
+        if (!chunks.length) { barEl.style.width = "0%"; return; }
+        barEl.style.width = Math.round((idx / chunks.length) * 100) + "%";
+        if (state !== "idle") countEl.textContent = Math.min(idx + 1, chunks.length) + "/" + chunks.length;
+    }
+
+    if (!synth) {
+        setView("error", S.unsupported);
+        btnPlay.disabled = true;
+        return;
+    }
+    setView("idle", S.ready);
+
+    // ---------- Voices (async-safe) ----------
+    const normLang = (l) => (l || "").toLowerCase().replace("_", "-");
+
+    function refreshVoices() {
+        try {
+            const v = synth.getVoices();
+            if (v && v.length) voiceCache = v;
+        } catch (e) {}
+        return voiceCache.length > 0;
+    }
+    synth.addEventListener("voiceschanged", refreshVoices);
+    refreshVoices();
+    let pollTries = 0;
+    const poll = setInterval(() => {
+        if (refreshVoices() || ++pollTries > 20) clearInterval(poll);
+    }, 300);
+
+    function waitForVoices(maxMs) {
+        return new Promise((resolve) => {
+            if (refreshVoices()) return resolve(true);
+            const t0 = Date.now();
+            const t = setInterval(() => {
+                if (refreshVoices() || Date.now() - t0 > maxMs) {
+                    clearInterval(t);
+                    resolve(voiceCache.length > 0);
+                }
+            }, 100);
+        });
+    }
+
+    function pickVoice() {
+        const prefs = CFG.prefs;
+        for (let i = 0; i < prefs.length; i++) {
+            const p = prefs[i];
+            const matches = voiceCache.filter((v) => {
+                const l = normLang(v.lang);
+                return p.length <= 3 ? (l === p || l.indexOf(p + "-") === 0) : l === p;
+            });
+            if (matches.length) {
+                // Prefer on-device voices (no network latency / no 15s cutoff)
+                matches.sort((a, b) => (b.localService ? 1 : 0) - (a.localService ? 1 : 0));
+                return { voice: matches[0], tier: i };
+            }
+        }
+        return { voice: null, tier: -1 };
+    }
+
+    function showVoiceHint(pick) {
+        if (!pick.voice) { hintEl.textContent = S.noVoice; }
+        else if (pick.tier > 0) {
+            hintEl.textContent = S.fallback.replace("{name}", pick.voice.name).replace("{lang}", pick.voice.lang);
+        } else { hintEl.textContent = ""; }
+        fit();
+    }
+
+    // ---------- Report extraction ----------
+    const NOISE_SEL = [
+        "button", "[role='button']", "input", "textarea", "select", "label[data-baseweb]",
+        "[data-baseweb='select']", "[data-baseweb='radio']", "[data-baseweb='input']",
+        "[data-testid='stFileUploader']", "[data-testid='stFileUploaderDropzone']",
+        "[data-testid='stCameraInput']", "[data-testid='stWidgetLabel']",
+        "[data-testid='stRadio']", "[data-testid='stSelectbox']", "[data-testid='stTextInput']",
+        "[data-testid='stImage']", "[data-testid='stSpinner']", "[data-testid='stProgress']",
+        "[data-testid='stToolbar']", "[data-testid='stDecoration']",
+        "iframe", "script", "style", "noscript", "svg", "canvas", "img", "video", "audio",
+        ".skiptranslate", ".goog-te-banner-frame", "[aria-hidden='true']", "[hidden]"
+    ].join(",");
+
+    // Lines that belong to uploader / navigation chrome, never to the report
+    const UI_RE = /(upload|drag\s*(and|&)?\s*drop|browse\s*files?|choose\s+(a\s+)?(file|image|photo)|take\s+(a\s+)?photo|limit\s*\d+|\d+\s?(mb|kb)\b|\bjpe?g\b|\bpng\b|click\s+(to|here)|अपलोड|ड्रॅग|ब्राउझ|फाईल|फाइल|कॅमेरा|क्लिक)/i;
+    // Section headings that mark where the real report starts (EN + MR)
+    const KEY_RE = /(diagnos|disease|detect|result|prediction|confidence|severity|symptom|treatment|infect|blight|rust|mildew|निदान|रोग|निकाल|आढळ|लक्षण|उपचार|तीव्रता|विश्वास|संसर्ग|करपा|तपासणी)/i;
+
+    function isShown(el) {
+        if (!el || el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+        const cs = parentWin.getComputedStyle(el);
+        return cs.display !== "none" && cs.visibility !== "hidden";
+    }
+    function isNoise(el) {
+        try { if (el.matches(NOISE_SEL)) return true; } catch (e) {}
+        const cs = parentWin.getComputedStyle(el);
+        return cs.display === "none" || cs.visibility === "hidden";
+    }
+
+    // Walks the live DOM and returns block-level text with its source element
+    function collectBlocks(root) {
+        const blocks = [];
+        let buf = "", bufEl = null;
+        const flush = () => {
+            const t = buf.replace(/\s+/g, " ").trim();
+            if (t) blocks.push({ el: bufEl, text: t });
+            buf = ""; bufEl = null;
+        };
+        (function walk(node) {
+            if (node.nodeType === 3) {
+                if (node.nodeValue && node.nodeValue.trim()) {
+                    if (!bufEl) bufEl = node.parentElement;
+                    buf += node.nodeValue;
+                } else { buf += " "; }
+                return;
+            }
+            if (node.nodeType !== 1) return;
+            if (node !== root && isNoise(node)) { flush(); return; }
+            if (node.tagName === "BR") { flush(); return; }
+            const d = parentWin.getComputedStyle(node).display;
+            const inline = d.indexOf("inline") === 0 || d === "contents";
+            if (!inline) flush();
+            for (const c of node.childNodes) walk(c);
+            if (!inline) flush();
+        })(root);
+        flush();
+        return blocks;
+    }
+
+    function findAnchor(root) {
+        const cards = Array.from(root.querySelectorAll(".agro-card")).filter(
+            (c) => isShown(c) && !c.closest("[hidden]") && (c.textContent || "").trim()
+        );
+        if (cards.length) return cards.find((c) => KEY_RE.test(c.textContent)) || cards[0];
+        const heads = root.querySelectorAll(
+            "h1,h2,h3,h4,h5,h6,[data-testid='stHeading'],[data-testid='stMarkdownContainer'] strong"
+        );
+        for (const h of heads) {
+            const t = h.textContent || "";
+            if (KEY_RE.test(t) && !UI_RE.test(t) && isShown(h) && !h.closest(NOISE_SEL)) return h;
+        }
+        return null;
+    }
+
+    // ---------- Text cleaning ----------
+    function clean(t) {
+        t = t
+            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")                    // [text](url) -> text
+            .replace(/https?:\/\/\S+|www\.\S+/gi, " ")
+            .replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F1E6}-\u{1F1FF}\uFE0E\uFE0F\u20E3]/gu, " ")
+            .replace(/[•●○▪▫■□◆◇★☆✔✓✗✘▶►◀◄»«]/g, " ")
+            .replace(/[→←↑↓➜➤➔⇒]/g, ", ")
+            .replace(/[`*_~#<>|\\^]+/g, " ")                              // markdown symbols
+            .replace(/(\d)\s*%/g, "$1 " + CFG.pct)
+            .replace(/°\s*C\b/g, " " + CFG.degC)
+            .replace(/&/g, " " + CFG.and + " ")
+            .replace(/\s*[–—]+\s*/g, ", ")                                // en/em dashes -> pause
+            .replace(/(^|\s)-+(?=\s|$)/g, " ")                            // stray hyphens
+            .replace(/[()\[\]{}]/g, ",")                                  // brackets -> pause
+            .replace(/…/g, ".")
+            .replace(/([.!?।,;:])(\s*\1)+/g, "$1")                        // repeated punctuation
+            .replace(/([.!?])\s*[.!?]+/g, "$1")
+            .replace(/,\s*([.!?।;:])/g, "$1")
+            .replace(/([;:])\s*([.!?।])/g, "$2")
+            .replace(/\s+([,.;:!?।])/g, "$1")
+            .replace(/,(?=[^\s,])/g, ", ")
+            .replace(/\s+/g, " ")
+            .replace(/^[\s,;:.!?।]+/, "")
+            .trim();
+        t = t.replace(/[,\s]+$/, "");
+        if (t && !/[.!?।:;]$/.test(t)) t += ".";
+        return t;
+    }
+
+    function finalize(blocks) {
+        const out = [];
+        let prev = "";
+        for (const b of blocks) {
+            if (UI_RE.test(b.text)) continue;
+            const t = clean(b.text);
+            if (!/[\p{L}\p{N}]/u.test(t)) continue;
+            if (t === prev) continue;
+            prev = t;
+            out.push(t);
+        }
+        return out;
+    }
+
+    function candidateRoots() {
+        const roots = [];
+        let el = window.frameElement ? window.frameElement.parentElement : null;
+        while (el) {                                   // the tab this reader lives in (inner -> outer)
+            if (el.matches && el.matches("[data-baseweb='tab-panel']")) roots.push(el);
+            el = el.parentElement;
+        }
+        parentDoc.querySelectorAll("[data-baseweb='tab-panel']").forEach((p) => {
+            if (!roots.includes(p) && isShown(p)) roots.push(p);
+        });
+        const main = parentDoc.querySelector(
+            "[data-testid='stMain'], section.main, [data-testid='stAppViewContainer']"
+        );
+        if (main) roots.push(main);
+        return roots;
+    }
+
+    function extractReport() {
+        for (const root of candidateRoots()) {
+            const startMark = root.querySelector("#agro-report-start");
+if (startMark) {
+    const endMark = root.querySelector("#agro-report-end");
+    const allBlocks = collectBlocks(root);
+    const sIdx = allBlocks.findIndex((b) => b.el && (startMark.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const eIdx = endMark ? allBlocks.findIndex((b) => b.el && (endMark.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING)) : -1;
+    if (sIdx >= 0) {
+        const sliced = eIdx > sIdx ? allBlocks.slice(sIdx, eIdx) : allBlocks.slice(sIdx);
+        const resParts = finalize(sliced);
+        if (resParts.join(" ").length >= 20) return resParts;
+    }
+}
+            const explicit = root.querySelector("#agro-report, [data-agro-report]");
+            let parts = [];
+            if (explicit) {
+                parts = finalize(collectBlocks(explicit));
+                if (parts.join(" ").length >= 20) return parts;
+                continue;
+            }
+            const blocks = collectBlocks(root);
+            const anchor = findAnchor(root);
+            if (anchor) {
+                const start = blocks.findIndex((b) => b.el && (
+                    anchor === b.el || anchor.contains(b.el) ||
+                    (anchor.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING)
+                ));
+                if (start >= 0) {
+                    parts = finalize(blocks.slice(start));
+                    if (parts.join(" ").length >= 40) return parts;
+                }
+            } else {
+                // No clear anchor: accept only if there is a substantial amount of non-UI text
+                parts = finalize(blocks);
+                if (parts.join(" ").length >= 200) return parts;
+            }
+        }
+        return [];
+    }
+
+    // ---------- Chunking (avoids Chrome's ~15s cutoff) ----------
+    const MAX = 150, MIN = 60;
+    const SENT_RE = /(?:[^.!?।]|[.!?।](?!\s|$))+[.!?।]*/g;      // keeps decimals like 5.5 intact
+
+    function packWords(str) {
+        const words = str.split(/\s+/), res = [];
+        let c = "";
+        for (const w of words) {
+            const next = c ? c + " " + w : w;
+            if (next.length > MAX && c) { res.push(c); c = w; } else { c = next; }
+        }
+        if (c) res.push(c);
+        return res;
+    }
+    function splitLong(s) {
+        if (s.length <= MAX) return [s];
+        const parts = s.match(/[^,;:]+[,;:]?\s*/g) || [s];
+        const res = [];
+        let cur = "";
+        for (let p of parts) {
+            p = p.trim();
+            if (!p) continue;
+            if (p.length > MAX) {
+                if (cur) { res.push(cur); cur = ""; }
+                packWords(p).forEach((w) => res.push(w));
+            } else if (cur && (cur + " " + p).length > MAX) {
+                res.push(cur); cur = p;
+            } else { cur = cur ? cur + " " + p : p; }
+        }
+        if (cur) res.push(cur);
+        return res;
+    }
+    function toChunks(parts) {
+        const pieces = [];
+        for (const block of parts) {
+            const sentences = block.match(SENT_RE) || [block];
+            for (const s of sentences) {
+                const t = s.trim();
+                if (t) splitLong(t).forEach((p) => pieces.push(p));
+            }
+        }
+        const merged = [];
+        let cur = "";
+        for (const p of pieces) {
+            if (!cur) { cur = p; continue; }
+            if (cur.length < MIN && cur.length + 1 + p.length <= MAX) cur += " " + p;
+            else { merged.push(cur); cur = p; }
+        }
+        if (cur) merged.push(cur);
+        return merged;
+    }
+
+    // ---------- Playback ----------
+    function armWatchdog(len) {
+        clearTimeout(wd);
+        const ms = 5000 + (len * 130) / CFG.rate;        // generous per-chunk stall guard
+        wd = setTimeout(() => {
+            if (state !== "speaking") return;
+            try { synth.cancel(); } catch (e) {}
+            const f = advanceFn;
+            setTimeout(() => { if (f) f(); }, 120);
+        }, ms);
+    }
+
+    function speakNext(myRun) {
+        if (myRun !== run) return;
+        if (idx >= chunks.length) { finish(); return; }
+
+        const text = chunks[idx];
+        const u = new parentWin.SpeechSynthesisUtterance(text);
+        u.lang = chosen ? chosen.lang : CFG.lang;      // match the actual voice (e.g. hi-IN fallback)
+        if (chosen) u.voice = chosen;
+        u.rate = CFG.rate; u.pitch = 1; u.volume = 1;
+
+        let done = false;
+        const advance = () => {
+            if (done || myRun !== run) return;
+            done = true;
+            clearTimeout(wd);
+            idx++;
+            speakNext(myRun);
+        };
+        advanceFn = advance;
+        u.onstart = () => { if (myRun === run) { updateProgress(); } };
+        u.onend = advance;
+        u.onerror = (e) => {
+            if (e && (e.error === "interrupted" || e.error === "canceled")) return;
+            advance();
+        };
+        parentWin.__agroUtter = u;                      // strong ref: prevents GC from killing onend
+        armWatchdog(text.length);
+        updateProgress();
+        synth.speak(u);
+    }
+
+    function finish() {
+        clearTimeout(wd);
+        barEl.style.width = "100%";
+        setView("done", S.done);
+    }
+
+    function stopAll(view, msg) {
+        run++;
+        clearTimeout(wd);
+        try { if (synth.paused) synth.resume(); } catch (e) {}
+        try { synth.cancel(); } catch (e) {}
+        barEl.style.width = "0%";
+        setView(view, msg);
+    }
+
+    async function onPlay() {
+        if (!synth) return;
+        if (!refreshVoices()) await waitForVoices(1500);
+
+        const parts = extractReport();
+        if (!parts.length) { stopAll("error", S.noReport); return; }
+
+        chunks = toChunks(parts);
+        const pick = pickVoice();
+        chosen = pick.voice;
+        showVoiceHint(pick);
+
+        run++;
+        const myRun = run;
+        idx = 0;
+        clearTimeout(wd);
+        const busy = synth.speaking || synth.pending || synth.paused;
+        try { if (synth.paused) synth.resume(); } catch (e) {}
+        if (busy) { try { synth.cancel(); } catch (e) {} }
+
+        setView("speaking", S.speaking);
+        updateProgress();
+        if (busy) setTimeout(() => speakNext(myRun), 120);   // Chrome drops speak() right after cancel()
+        else speakNext(myRun);                                // stay inside the user gesture (iOS/Safari)
+    }
+
+    function onPauseResume() {
+        if (state === "speaking") {
+            try { synth.pause(); } catch (e) {}
+            clearTimeout(wd);
+            setView("paused", S.paused);
+            updateProgress();
+        } else if (state === "paused") {
+            try { synth.resume(); } catch (e) {}
+            setView("speaking", S.speaking);
+            updateProgress();
+            armWatchdog(chunks[idx] ? chunks[idx].length : 100);
+            // Some mobile browsers lose the utterance on pause(); re-speak the current chunk
+            setTimeout(() => {
+                if (state === "speaking" && !synth.speaking && !synth.pending) {
+                    run++;
+                    const myRun = run;
+                    try { synth.cancel(); } catch (e) {}
+                    setTimeout(() => speakNext(myRun), 120);
+                }
+            }, 400);
+        }
+    }
+
+    btnPlay.addEventListener("click", onPlay);
+    btnPause.addEventListener("click", onPauseResume);
+    btnStop.addEventListener("click", () => stopAll("idle", S.ready));
+
+    // ---------- Lifecycle: stop stale speech on rerun / unload ----------
+    function dispose() {
+        run++;
+        clearTimeout(wd);
+        clearInterval(poll);
+        try { synth.removeEventListener("voiceschanged", refreshVoices); } catch (e) {}
+        try { synth.cancel(); } catch (e) {}
+    }
+    try { if (parentWin.__agroVoiceDispose) parentWin.__agroVoiceDispose(); } catch (e) {}
+    try { synth.cancel(); } catch (e) {}
+    parentWin.__agroVoiceDispose = dispose;
+    parentWin.addEventListener("pagehide", dispose);
+})();
+</script>
+</body>
+</html>
+"""
+
+    html = template.replace("__HTML_LANG__", "mr" if is_mr else "en").replace(
+        "__CONFIG__", json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/")
+    )
+    components.html(html, height=64, scrolling=False)
+
+
 def render_report(crop, source, res, diag, info):
+    render_voice_reader()
     is_mr = st.session_state.get("lang") == "मराठी"
     zone, zcolor = diag["zone"], diag["zcolor"]
     zone_disp = tr(zone) if is_mr else zone
@@ -1169,6 +1902,7 @@ def render_report(crop, source, res, diag, info):
         plan["chemical"] = tr_list(plan["chemical"])
         plan["prevention"] = tr_list(plan["prevention"])
 
+    st.markdown('<span id="agro-report-start"></span>', unsafe_allow_html=True)
     md(
         f'<div class="diag" style="--c:{zcolor}"><div class="diag-left"><div class="diag-ico">{info["icon"]}</div>'
         f'<div><div class="diag-eyebrow">Diagnosis for {esc(crop)}</div><div class="diag-name">{esc(diag["name"])}</div>'
@@ -1231,7 +1965,7 @@ def render_report(crop, source, res, diag, info):
             file_name=f"agroguard_report_{stamp}.txt", mime="text/plain", key="dl_report_txt",
         )
     st.caption("Tip: open the .html report in a browser and use Print > Save as PDF for a PDF copy.")
-
+    st.markdown('<span id="agro-report-start"></span>', unsafe_allow_html=True)
 
 
 def view_scanner():
