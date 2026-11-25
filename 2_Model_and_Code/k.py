@@ -1937,6 +1937,141 @@ if (startMark) {
     )
     components.html(html, height=64, scrolling=False)
 
+def render_share_bar(crop, diag, res, plan, zone_disp, is_mr):
+    import json
+    from urllib.parse import quote
+    import streamlit.components.v1 as components
+
+    # ---- build the summary text ----
+    try:
+        sev = float(res["severity"])
+    except (KeyError, TypeError, ValueError):
+        sev = 0.0
+    try:
+        action = str(plan["immediate"][0])
+    except (KeyError, IndexError, TypeError):
+        action = "—"
+    name = str(diag["name"]) if isinstance(diag, dict) and "name" in diag else str(diag)
+
+    if is_mr:
+        title = "AgroGuard AI – पीक निदान अहवाल"
+        text = (
+            f"{title}\n\n"
+            f"पीक: {crop}\n"
+            f"आढळलेली स्थिती: {name}\n"
+            f"तीव्रता: {sev:.1f}% ({zone_disp})\n"
+            f"तात्काळ उपाय: {action}\n\n"
+            "AgroGuard AI द्वारे शेअर केले"
+        )
+        labels = {"copy": "अहवाल कॉपी करा", "copied": "कॉपी झाले!",
+                  "failed": "कॉपी अयशस्वी", "more": "इतर अ‍ॅप्स", "aria": "अहवाल शेअर करा"}
+    else:
+        title = "AgroGuard AI – Crop Diagnosis Report"
+        text = (
+            f"{title}\n\n"
+            f"Crop: {crop}\n"
+            f"Detected condition: {name}\n"
+            f"Severity: {sev:.1f}% ({zone_disp})\n"
+            f"Immediate action: {action}\n\n"
+            "Shared via AgroGuard AI"
+        )
+        labels = {"copy": "Copy Report", "copied": "Copied!",
+                  "failed": "Copy failed", "more": "More Apps", "aria": "Share report"}
+
+    q = quote(text, safe="")
+    data = {
+        "title": title,
+        "text": text,
+        "wa": "https://wa.me/?text=" + q,
+        "tg": "https://t.me/share/url?url=" + quote("https://agroguard.ai", safe="") + "&text=" + q,
+        "sms": "sms:?&body=" + q,
+        "mail": "mailto:?subject=" + quote(title, safe="") + "&body=" + q,
+        "labels": labels,
+    }
+    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+
+    html = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0; padding:0; background:transparent; overflow:hidden;}
+  body{padding:4px; font-family:'Plus Jakarta Sans','Noto Sans Devanagari','Segoe UI',system-ui,sans-serif;}
+  .bar{display:flex; flex-wrap:nowrap; align-items:center; gap:8px; height:60px; padding:0 10px;
+    background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none;}
+  .bar::-webkit-scrollbar{display:none;}
+  .btn{flex:1 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:7px; height:40px; padding:0 14px;
+    font:600 13.5px/1 'Plus Jakarta Sans','Noto Sans Devanagari','Segoe UI',system-ui,sans-serif; color:#0F172A; text-decoration:none; white-space:nowrap;
+    background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; cursor:pointer; transition:background .15s ease, border-color .15s ease, color .15s ease;}
+  .btn:hover{background:#ECFDF5; border-color:#047857; color:#065F46;}
+  .btn:focus-visible{outline:2px solid #047857; outline-offset:2px;}
+  .btn .ic{font-size:15px; line-height:1;}
+  .btn.primary{background:#047857; border-color:#047857; color:#FFFFFF;}
+  .btn.primary:hover{background:#065F46; border-color:#065F46; color:#FFFFFF;}
+  .btn.done{background:#065F46; border-color:#065F46; color:#FFFFFF;}
+  @media (max-width:520px){.btn{padding:0 11px; font-size:12.5px;}}
+  @media (prefers-reduced-motion:reduce){.btn{transition:none;}}
+</style>
+<div class="bar" role="group" id="bar">
+  <a class="btn" id="wa" target="_blank" rel="noopener noreferrer"><span class="ic">💬</span>WhatsApp</a>
+  <a class="btn" id="tg" target="_blank" rel="noopener noreferrer"><span class="ic">✈️</span>Telegram</a>
+  <a class="btn" id="sms" target="_blank" rel="noopener noreferrer"><span class="ic">📱</span>SMS</a>
+  <a class="btn" id="mail" target="_blank" rel="noopener noreferrer"><span class="ic">📧</span>Email</a>
+  <button class="btn primary" id="copy" type="button"><span class="ic">📋</span><span id="copy-t"></span></button>
+  <button class="btn" id="more" type="button"><span class="ic">🔗</span><span id="more-t"></span></button>
+</div>
+<script>
+(function(){
+  var D = __PAYLOAD__;
+  var $ = function(id){ return document.getElementById(id); };
+  $('bar').setAttribute('aria-label', D.labels.aria);
+  $('wa').href = D.wa; $('tg').href = D.tg; $('sms').href = D.sms; $('mail').href = D.mail;
+  $('copy-t').textContent = D.labels.copy;
+  $('more-t').textContent = D.labels.more;
+
+  function fallbackCopy(t){
+    return new Promise(function(resolve){
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { ta.setSelectionRange(0, t.length); } catch(e) {}
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+      resolve(ok);
+    });
+  }
+  async function copyText(t){
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(t); return true; } catch(e) {}
+    }
+    return fallbackCopy(t);
+  }
+
+  var timer = null;
+  function flash(ok){
+    var b = $('copy'), l = $('copy-t');
+    l.textContent = ok ? D.labels.copied : D.labels.failed;
+    if (ok) b.classList.add('done');
+    clearTimeout(timer);
+    timer = setTimeout(function(){ l.textContent = D.labels.copy; b.classList.remove('done'); }, 2000);
+  }
+
+  $('copy').addEventListener('click', async function(){ flash(await copyText(D.text)); });
+
+  $('more').addEventListener('click', async function(){
+    if (navigator.share) {
+      try { await navigator.share({ title: D.title, text: D.text }); return; }
+      catch(e) { if (e && e.name === 'AbortError') return; }
+    }
+    flash(await copyText(D.text));
+  });
+})();
+</script>
+"""
+    components.html(html.replace("__PAYLOAD__", payload), height=68)
 
 def render_report(crop, source, res, diag, info):
     render_voice_reader()
@@ -1952,6 +2087,7 @@ def render_report(crop, source, res, diag, info):
         plan["prevention"] = tr_list(plan["prevention"])
 
     st.markdown('<span id="agro-report-start"></span>', unsafe_allow_html=True)
+    render_share_bar(crop, diag, res, plan, zone_disp, is_mr)
     md(
         f'<div class="diag" style="--c:{zcolor}"><div class="diag-left"><div class="diag-ico">{info["icon"]}</div>'
         f'<div><div class="diag-eyebrow">Diagnosis for {esc(crop)}</div><div class="diag-name">{esc(diag["name"])}</div>'
