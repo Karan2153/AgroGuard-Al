@@ -1,15 +1,16 @@
 """
-AgroGuard AI v2.0 Pro
+AgroGuard AI v2.2 Pro (Version 2)
 Crop Disease Detection, Severity Analysis & Smart Recommendation System
 First-Year B.Tech - Engineering Design and Innovation project
 
-Run with:  python -m streamlit run k.py
+Run with:  python -m streamlit run k_v2.py
 """
 import base64
 import hashlib
 import html as html_lib
 import io
 import json
+import os
 import textwrap
 from collections import Counter
 from datetime import datetime
@@ -22,7 +23,7 @@ import streamlit as st
 from PIL import Image, ImageOps
 
 st.set_page_config(
-    page_title="AgroGuard AI - Crop Disease Detection",
+    page_title="AgroGuard AI v2 - Crop Disease Detection",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -31,7 +32,7 @@ st.set_page_config(
 # =============================================================================
 # CONSTANTS
 # =============================================================================
-APP_VERSION = "v2.0 Pro"
+APP_VERSION = "v2.2 Pro"
 MAX_DIM = 800
 CROPS = ["Tomato", "Potato", "Pepper / Chilli", "Grape", "Corn / Maize", "Apple", "General Leaf"]
 
@@ -46,8 +47,8 @@ COL_MILDEW = (0, 220, 255)
 COL_LEAF = (16, 185, 129)
 
 ZONE_TABLE = [
-    ("0-5%", "Healthy", "#10B981"),
-    ("5-25%", "Mild", "#A3E635"),
+    ("0-5%", "Healthy", "#059669"),
+    ("5-25%", "Mild", "#65A30D"),
     ("25-50%", "Moderate", "#F59E0B"),
     (">50%", "Critical", "#EF4444"),
 ]
@@ -701,6 +702,129 @@ div[role="radiogroup"] label:has(input:checked) > div:first-child{background-col
 [data-testid="stMetric"]{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 16px; box-shadow:var(--shadow);}
 [data-testid="stMetricValue"]{color:var(--em) !important;}
 [data-testid="stMetricLabel"] p{color:var(--muted) !important;}
+
+/* ===== Agri-Lime & Emerald polish ===== */
+#MainMenu, footer, [data-testid="stStatusWidget"]{visibility:hidden !important; display:none !important;}
+
+.hero{position:relative; overflow:hidden;
+  background:linear-gradient(135deg, #065F46 0%, #059669 52%, #65A30D 100%);
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 10px 32px rgba(5,150,105,.32), 0 0 28px rgba(101,163,13,.25), inset 0 1px 0 rgba(255,255,255,.35);}
+.hero::before{content:""; position:absolute; left:0; right:0; top:0; height:50%;
+  background:linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0));
+  pointer-events:none;}
+.hero > *{position:relative; z-index:1;}
+.hero-sub{color:#ECFCCB;}
+.hero-title .ai{color:#D9F99D;}
+
+.stTabs [aria-selected="true"]{
+  background:linear-gradient(135deg, #16A34A 0%, #65A30D 100%) !important;
+  box-shadow:0 4px 14px rgba(22,163,74,.40), 0 0 14px rgba(101,163,13,.28), inset 0 1px 0 rgba(255,255,255,.35) !important;}
+
+.stButton > button, .stDownloadButton > button,
+[data-testid="stFileUploaderDropzone"] button{
+  background:linear-gradient(135deg, #16A34A 0%, #65A30D 100%) !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  box-shadow:0 4px 14px rgba(22,163,74,.35), 0 0 12px rgba(101,163,13,.22), inset 0 1px 0 rgba(255,255,255,.35) !important;}
+.stButton > button:hover, .stDownloadButton > button:hover,
+[data-testid="stFileUploaderDropzone"] button:hover{
+  background:linear-gradient(135deg, #15803D 0%, #4D7C0F 100%) !important;
+  box-shadow:0 6px 20px rgba(22,163,74,.45), 0 0 18px rgba(101,163,13,.35), inset 0 1px 0 rgba(255,255,255,.35) !important;}
+
+[data-testid="stFileUploaderFile"]{background:#ECFDF5 !important; border:1px solid #A7F3D0; border-radius:12px;}
+[data-testid="stFileUploaderFile"] *{color:#065F46 !important;}
+
+/* dosage calculator card */
+.dose-card{background:linear-gradient(135deg,#ECFDF5 0%,#F7FEE7 100%); border:1px solid #A7F3D0; border-left:6px solid #16A34A;
+  border-radius:18px; padding:18px 20px; margin:12px 0; box-shadow:0 6px 20px rgba(22,163,74,.12);}
+.dose-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;}
+.dose-item{background:#fff; border:1px solid #D1FAE5; border-radius:14px; padding:12px 14px;}
+.dose-lab{color:#64748B; font-size:.78rem; font-weight:600;}
+.dose-val{color:#065F46; font-size:1.45rem; font-weight:800; line-height:1.2; margin-top:4px;}
+.dose-note{color:#334155; font-size:.82rem; margin-top:10px; line-height:1.5;}
+
+/* ===== Professional header + language switch ===== */
+.hero{padding:26px 30px; border-radius:24px;}
+.hero::after{content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:radial-gradient(rgba(255,255,255,.22) 1.2px, transparent 1.8px); background-size:20px 20px;
+  -webkit-mask-image:linear-gradient(90deg, transparent 45%, #000 100%); mask-image:linear-gradient(90deg, transparent 45%, #000 100%);}
+.logo{width:68px; height:68px; border-radius:20px; flex-shrink:0;
+  background:linear-gradient(145deg, rgba(255,255,255,.30), rgba(255,255,255,.08));
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 22px rgba(0,0,0,.20);}
+.logo svg{width:42px; height:42px; display:block;}
+.hero-title{font-size:2.05rem; line-height:1.1; text-shadow:0 2px 10px rgba(0,0,0,.18);}
+.hero-sub{font-size:.95rem; margin-top:6px; color:#ECFCCB;}
+.hero-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+.hero-chips span{font-size:.74rem; font-weight:600; color:#F7FEE7; padding:3px 11px; border-radius:999px;
+  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.30);}
+.status{background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.38); box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
+.badge{background:rgba(255,255,255,.22); border:1px solid rgba(255,255,255,.45);}
+@media (max-width:640px){.hero{padding:20px 18px;} .hero-title{font-size:1.6rem;} .hero-chips{display:none;}}
+
+/* language radio: emerald instead of red / black */
+[data-testid="stRadio"] label[data-baseweb="radio"] > div:first-child{
+  background-color:#FFFFFF !important; border:2px solid #94A3B8 !important;}
+[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) > div:first-child{
+  background-color:#16A34A !important; border-color:#16A34A !important;}
+[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) > div:first-child > div{
+  background-color:#FFFFFF !important;}
+[data-testid="stRadio"] label[data-baseweb="radio"] p{color:var(--text) !important; font-weight:600;}
+
+/* ===== Leaf showcase carousel (pure CSS) + preview card ===== */
+.lc{position:relative; height:195px; margin:12px 0 6px; border-radius:14px; overflow:hidden; isolation:isolate;
+  border:1px solid #A7F3D0; background:#ECFDF5;
+  box-shadow:0 6px 18px rgba(22,163,74,.14), inset 0 1px 0 rgba(255,255,255,.7);}
+.lc::after{content:""; position:absolute; inset:0; z-index:3; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0) 42%);}
+.lc-slide{position:absolute; inset:0; opacity:0; animation:lc-fade 16s infinite both; will-change:opacity, transform;}
+.lc-slide:nth-child(1){animation-delay:0s;}
+.lc-slide:nth-child(2){animation-delay:4s;}
+.lc-slide:nth-child(3){animation-delay:8s;}
+.lc-slide:nth-child(4){animation-delay:12s;}
+.lc-slide svg{width:100%; height:100%; display:block;}
+.lc-img{width:100%; height:100%; object-fit:cover; display:block;}
+@keyframes lc-fade{
+  0%{opacity:0; transform:scale(1.04);}
+  4%{opacity:1;}
+  25%{opacity:1; transform:scale(1);}
+  30%{opacity:0;}
+  100%{opacity:0; transform:scale(1);}}
+.lc-cap{position:absolute; left:14px; top:50%; transform:translateY(-50%); z-index:2; max-width:44%;
+  padding:12px 14px; border-radius:12px; background:rgba(255,255,255,.74);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.85); box-shadow:0 6px 16px rgba(6,95,70,.14);}
+.lc-tag{display:inline-block; font-size:.68rem; font-weight:700; color:#065F46; background:#D1FAE5; padding:2px 9px; border-radius:999px;}
+.lc-t{font-weight:800; color:#065F46; font-size:1.02rem; line-height:1.2; margin-top:7px;}
+.lc-m{font-weight:600; color:#4D7C0F; font-size:.86rem; margin-top:3px;}
+.lc-foot{position:absolute; right:12px; bottom:10px; z-index:4; display:flex; align-items:center; gap:6px;
+  font-size:.72rem; font-weight:600; color:#065F46; background:rgba(255,255,255,.78); padding:4px 10px; border-radius:999px;}
+.lc-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:#A7F3D0; animation:lc-dot 16s infinite both;}
+@keyframes lc-dot{
+  0%{background:#16A34A; transform:scale(1.35);}
+  25%{background:#16A34A; transform:scale(1.35);}
+  25.1%{background:#A7F3D0; transform:scale(1);}
+  100%{background:#A7F3D0; transform:scale(1);}}
+@media (max-width:640px){.lc-cap{max-width:64%; padding:9px 11px;} .lc-m{display:none;}}
+@media (prefers-reduced-motion: reduce){
+  .lc-slide{animation:none !important; opacity:0;} .lc-slide:nth-child(1){opacity:1 !important;} .lc-dot{animation:none !important;}}
+.st-key-leaf_preview_card{background:#F0FDF4; border:1px solid #BBF7D0; border-radius:16px; padding:12px 14px;
+  box-shadow:0 6px 18px rgba(22,163,74,.10); margin-top:10px;}
+.lp-cap{font-size:.8rem; font-weight:600; color:#065F46; margin-top:6px; text-align:center; word-break:break-all;}
+
+/* ===== Step labels + top bar ===== */
+.stp{display:flex; align-items:center; gap:10px; font-weight:800; color:var(--text); font-size:.98rem; margin:6px 0 6px;}
+.stp-n{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+  font-size:.82rem; font-weight:800; color:#fff; background:linear-gradient(135deg,#16A34A 0%,#65A30D 100%);
+  box-shadow:0 3px 8px rgba(22,163,74,.32);}
+.topbar-note{padding-top:8px; font-size:.86rem; font-weight:600; color:var(--muted);}
+.st-key-lang div[role="radiogroup"]{justify-content:flex-end;}
+[data-testid="stHorizontalBlock"]:has(.topbar-note) div[role="radiogroup"]{width:100%; justify-content:flex-end;}
+.stTabs [data-baseweb="tab-list"]{gap:6px !important; background:#FFFFFF !important; padding:6px !important;
+  border-radius:16px !important; border:1px solid var(--line) !important; box-shadow:var(--shadow) !important;}
+.stTabs [data-baseweb="tab"]{height:46px !important; padding:0 18px !important; border-radius:12px !important; background:transparent;}
+.stTabs [data-baseweb="tab"]:hover{background:var(--em-soft) !important;}
+.stTabs [aria-selected="true"]:hover{background:linear-gradient(135deg,#16A34A 0%,#65A30D 100%) !important;}
 </style>
         """
     )
@@ -906,7 +1030,7 @@ def severity_zone(sev):
     if sev < 5:
         return "Healthy", "#10B981"
     if sev < 25:
-        return "Mild", "#A3E635"
+        return "Mild", "#65A30D"
     if sev <= 50:
         return "Moderate", "#F59E0B"
     return "Critical", "#EF4444"
@@ -963,24 +1087,24 @@ def build_plan(info, zone):
 # CHARTS
 # =============================================================================
 
-CHART_FONT = dict(family="Inter, Segoe UI, sans-serif", color="#CBD5E1")
+CHART_FONT = dict(family="Inter, Segoe UI, sans-serif", color="#334155")
 
 
 def plotly_show(fig, key):
     call_stretch(st.plotly_chart, fig, key=key, theme=None)
 
 
-def make_gauge(value, title, steps, bar_color, ticks):
+def make_gauge(value, title, steps, bar_color, ticks, number_color="#065F46"):
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=round(value, 1),
-        number={"suffix": "%", "font": {"size": 42, "color": "#F8FAFC"}},
-        title={"text": title, "font": {"size": 15, "color": "#94A3B8"}},
+        number={"suffix": "%", "font": {"size": 42, "color": number_color}},
+        title={"text": title, "font": {"size": 15, "color": "#475569"}},
         gauge={
-            "axis": {"range": [0, 100], "tickvals": ticks, "tickcolor": "#64748B", "tickfont": {"color": "#94A3B8"}},
+            "axis": {"range": [0, 100], "tickvals": ticks, "tickcolor": "#64748B", "tickfont": {"color": "#475569"}},
             "bar": {"color": bar_color, "thickness": 0.30},
             "bgcolor": "rgba(0,0,0,0)", "borderwidth": 0,
             "steps": steps,
-            "threshold": {"line": {"color": "#FFFFFF", "width": 3}, "thickness": 0.85, "value": value},
+            "threshold": {"line": {"color": "#065F46", "width": 3}, "thickness": 0.85, "value": value},
         },
     ))
     fig.update_layout(height=270, margin=dict(l=24, r=24, t=56, b=8), paper_bgcolor="rgba(0,0,0,0)", font=CHART_FONT)
@@ -1013,11 +1137,11 @@ def composition_donut(res):
     values = [res["healthy"], res["necro_pct"], res["chlor_pct"], res["mildew_pct"]]
     fig = go.Figure(go.Pie(
         labels=labels, values=values, hole=0.62, sort=False, textinfo="percent",
-        marker=dict(colors=["#10B981", "#EF4444", "#FACC15", "#22D3EE"], line=dict(color="#0B1220", width=2)),
+        marker=dict(colors=["#10B981", "#EF4444", "#FACC15", "#22D3EE"], line=dict(color="#FFFFFF", width=2)),
     ))
     fig.update_layout(
         height=270, margin=dict(l=10, r=10, t=36, b=10), paper_bgcolor="rgba(0,0,0,0)", font=CHART_FONT,
-        title=dict(text="Leaf Tissue Composition", font=dict(size=15, color="#94A3B8"), x=0.5),
+        title=dict(text="Leaf Tissue Composition", font=dict(size=15, color="#475569"), x=0.5),
         legend=dict(orientation="v", font=dict(size=11)),
     )
     return fig
@@ -1438,6 +1562,23 @@ button:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 2px;
     *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
     .eq i { transform: scaleY(0.6); }
 }
+/* light-theme overrides (page is light now) */
+:root{--text-1:#064E3B; --text-2:#475569;}
+.panel{background:linear-gradient(180deg,#FFFFFF,#F8FAFC); border:1px solid #E2E8F0; box-shadow:0 4px 14px rgba(15,23,42,.06);}
+.panel[data-view="speaking"]{border-color:rgba(22,163,74,.55); box-shadow:0 4px 18px rgba(22,163,74,.18);}
+.btn-primary{background:linear-gradient(135deg,#16A34A 0%,#65A30D 100%); border:1px solid rgba(255,255,255,.3); box-shadow:0 4px 14px rgba(22,163,74,.35), inset 0 1px 0 rgba(255,255,255,.35);}
+.btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#15803D 0%,#4D7C0F 100%); border-color:rgba(255,255,255,.4); box-shadow:0 6px 20px rgba(22,163,74,.45), inset 0 1px 0 rgba(255,255,255,.35);}
+.btn-ghost{background:#FFFFFF; border:1px solid #CBD5E1; color:#064E3B; box-shadow:none;}
+.btn-ghost:hover:not(:disabled){background:#ECFDF5; border-color:#16A34A;}
+.badge{color:#475569; background:#F8FAFC; border:1px solid #E2E8F0;}
+.panel[data-view="speaking"] .badge{color:#065F46; background:#ECFDF5; border-color:#86EFAC;}
+.panel[data-view="paused"] .badge{color:#B45309; background:#FFFBEB; border-color:#FCD34D;}
+.panel[data-view="done"] .badge{color:#065F46; background:#ECFDF5; border-color:#86EFAC;}
+.panel[data-view="error"] .badge{color:#B91C1C; background:#FEF2F2; border-color:#FCA5A5;}
+.progress{background:#E2E8F0;}
+.eq i{background:#16A34A;}
+.panel[data-view="paused"] .eq i{background:#D97706;}
+.hint, .count{color:#475569;}
 </style>
 </head>
 <body class="notranslate">
@@ -1936,6 +2077,114 @@ if (startMark) {
         "__CONFIG__", json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/")
     )
     components.html(html, height=64, scrolling=False)
+import cv2
+import numpy as np
+import streamlit as st
+
+
+def check_leaf_image_quality(bgr_img, is_mr=False):
+    """Returns {"ok": bool, "issues": [str], "flags": {...}, "metrics": {...}}."""
+    msgs = {
+        "blur": ("फोटो धूसर (ब्लर) आहे. मोबाईल स्थिर धरा, पानावर टॅप करून फोकस करा आणि पुन्हा फोटो काढा."
+                 if is_mr else
+                 "The photo looks blurry. Hold the phone steady, tap the leaf to focus, and retake it."),
+        "dark": ("फोटो खूप अंधारा आहे. दिवसाच्या उजेडात जा किंवा फ्लॅश चालू करा."
+                 if is_mr else
+                 "The photo is too dark. Move into daylight or turn on the flash."),
+        "glare": ("फोटोमध्ये खूप चकाकी किंवा जास्त प्रकाश आहे. सावलीत फोटो काढा आणि थेट सूर्यप्रकाशाचे परावर्तन टाळा."
+                  if is_mr else
+                  "The photo has too much glare or bright light. Shoot in shade and avoid direct sun reflection."),
+        "leaf": ("फोटोमध्ये पान खूप लहान दिसत आहे. जवळून फोटो काढा, जेणेकरून पान जास्तीत जास्त फ्रेम भरेल."
+                 if is_mr else
+                 "The leaf is too small in the photo. Move closer so the leaf fills most of the frame."),
+        "empty": ("फोटो वाचता आला नाही. कृपया पुन्हा फोटो घ्या किंवा अपलोड करा."
+                  if is_mr else
+                  "The image could not be read. Please retake or re-upload the photo."),
+    }
+
+    if bgr_img is None or getattr(bgr_img, "size", 0) == 0:
+        return {"ok": False, "issues": [msgs["empty"]],
+                "flags": {"blur": True, "exposure": True, "leaf": True},
+                "metrics": {"sharpness": 0.0, "brightness": 0.0, "coverage": 0.0}}
+
+    img = bgr_img
+    if img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    sharpness = float(cv2.Laplacian(blurred, cv2.CV_64F).var())
+    brightness = float(np.mean(gray))
+
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    leaf_mask = cv2.inRange(hsv, (15, 25, 25), (95, 255, 255))
+    coverage = float(np.count_nonzero(leaf_mask)) * 100.0 / leaf_mask.size
+
+    is_blur = sharpness < 75.0
+    is_dark = brightness < 45.0
+    is_glare = brightness > 225.0
+    is_leaf_low = coverage < 12.0
+
+    issues = []
+    if is_blur:
+        issues.append(msgs["blur"])
+    if is_dark:
+        issues.append(msgs["dark"])
+    if is_glare:
+        issues.append(msgs["glare"])
+    if is_leaf_low:
+        issues.append(msgs["leaf"])
+
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "flags": {"blur": is_blur, "exposure": is_dark or is_glare, "leaf": is_leaf_low},
+        "metrics": {"sharpness": sharpness, "brightness": brightness, "coverage": coverage},
+    }
+
+
+def render_quality_gate(bgr_img, is_mr=False):
+    """Silent True if the photo passes. Otherwise shows a warning card and returns
+    the state of the 'proceed anyway' checkbox (caller can st.stop() on False)."""
+    q = check_leaf_image_quality(bgr_img, is_mr)
+    if q["ok"]:
+        return True
+
+    m, f = q["metrics"], q["flags"]
+    title = "फोटोची गुणवत्ता तपासणी" if is_mr else "Photo quality check"
+    labels = (("तीक्ष्णता", "तेजस्विता", "पानांचे प्रमाण") if is_mr
+              else ("Sharpness", "Brightness", "Leaf coverage"))
+    chips_data = (
+        (labels[0], f"{m['sharpness']:.0f}", f["blur"]),
+        (labels[1], f"{m['brightness']:.0f}", f["exposure"]),
+        (labels[2], f"{m['coverage']:.1f}%", f["leaf"]),
+    )
+
+    chips = ""
+    for label, value, bad in chips_data:
+        bg, bd, fg = ("#FEF3C7", "#F59E0B", "#92400E") if bad else ("#ECFDF5", "#A7F3D0", "#065F46")
+        chips += (f'<span style="display:inline-block;padding:4px 10px;border-radius:999px;'
+                  f'font-size:.76rem;font-weight:700;background:{bg};border:1px solid {bd};color:{fg};">'
+                  f'{label}: {value}</span>')
+
+    items = "".join(f'<li style="margin-bottom:4px;">{msg}</li>' for msg in q["issues"])
+    html = (
+        '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-left:5px solid #F59E0B;'
+        'border-radius:12px;padding:14px 18px;margin:10px 0 6px 0;color:#92400E;">'
+        f'<div style="font-weight:800;font-size:.98rem;margin-bottom:6px;">⚠️ {title}</div>'
+        f'<ul style="margin:0 0 10px 0;padding-left:18px;font-size:.9rem;line-height:1.5;color:#92400E;">{items}</ul>'
+        f'<div style="display:flex;flex-wrap:wrap;gap:8px;">{chips}</div>'
+        '</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+    try:
+        key = f"agro_quality_proceed_{hash(bgr_img[::16, ::16].tobytes())}"
+    except Exception:
+        key = "agro_quality_proceed"
+    return st.checkbox("तरीही विश्लेषण सुरू ठेवा" if is_mr else "Proceed with analysis anyway", key=key)
 
 def render_share_bar(crop, diag, res, plan, zone_disp, is_mr):
     import json
@@ -2006,19 +2255,43 @@ def render_share_bar(crop, diag, res, plan, zone_disp, is_mr):
   .btn:hover{background:#ECFDF5; border-color:#047857; color:#065F46;}
   .btn:focus-visible{outline:2px solid #047857; outline-offset:2px;}
   .btn .ic{font-size:15px; line-height:1;}
-  .btn.primary{background:#047857; border-color:#047857; color:#FFFFFF;}
-  .btn.primary:hover{background:#065F46; border-color:#065F46; color:#FFFFFF;}
+  .btn.primary{background:linear-gradient(135deg,#16A34A 0%,#65A30D 100%); border-color:#16A34A; color:#FFFFFF;}
+  .btn.primary:hover{background:linear-gradient(135deg,#15803D 0%,#4D7C0F 100%); border-color:#15803D; color:#FFFFFF;}
   .btn.done{background:#065F46; border-color:#065F46; color:#FFFFFF;}
   @media (max-width:520px){.btn{padding:0 11px; font-size:12.5px;}}
   @media (prefers-reduced-motion:reduce){.btn{transition:none;}}
 </style>
 <div class="bar" role="group" id="bar">
-  <a class="btn" id="wa" target="_blank" rel="noopener noreferrer"><span class="ic">💬</span>WhatsApp</a>
-  <a class="btn" id="tg" target="_blank" rel="noopener noreferrer"><span class="ic">✈️</span>Telegram</a>
-  <a class="btn" id="sms" target="_blank" rel="noopener noreferrer"><span class="ic">📱</span>SMS</a>
-  <a class="btn" id="mail" target="_blank" rel="noopener noreferrer"><span class="ic">📧</span>Email</a>
-  <button class="btn primary" id="copy" type="button"><span class="ic">📋</span><span id="copy-t"></span></button>
-  <button class="btn" id="more" type="button"><span class="ic">🔗</span><span id="more-t"></span></button>
+  <a class="btn" id="wa" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
+      <circle cx="16" cy="16" r="16" fill="#25D366"/>
+      <path fill="#FFFFFF" d="M23.5 19.2c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.5-.5.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.2.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.9-.8 2.1-1.5.3-.7.3-1.4.2-1.5-.1-.2-.3-.2-.6-.4z"/>
+    </svg>
+    WhatsApp
+  </a>
+  <a class="btn" id="tg" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
+      <circle cx="16" cy="16" r="16" fill="#229ED9"/>
+      <path fill="#FFFFFF" d="M22.9 10.2c.2-.8-.6-1.4-1.3-1.1L8.4 14.3c-.7.3-.7 1.3.1 1.5l3.3 1 1.3 4.1c.2.6.9.8 1.4.4l1.9-1.6 3.7 2.7c.6.4 1.4.1 1.6-.6l2.2-11.6zm-3.2 2.3-5.9 5.3-.2 2.4-.9-2.9 7-4.8z"/>
+    </svg>
+    Telegram
+  </a>
+  <a class="btn" id="sms" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    SMS
+  </a>
+  <a class="btn" id="mail" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+    Email
+  </a>
+  <button class="btn primary" id="copy" type="button">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    <span id="copy-t"></span>
+  </button>
+  <button class="btn" id="more" type="button">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+    <span id="more-t"></span>
+  </button>
 </div>
 <script>
 (function(){
@@ -2073,6 +2346,80 @@ def render_share_bar(crop, diag, res, plan, zone_disp, is_mr):
 """
     components.html(html.replace("__PAYLOAD__", payload), height=68)
 
+def render_dosage_calculator(res, is_mr=False):
+    import math
+
+    sev = float(res.get("severity", 0.0))
+    if sev < 5.0:
+        return
+
+    if is_mr:
+        T = {
+            "title": "🧮 एकर / गुंठा फवारणी व डोस कॅल्क्युलेटर",
+            "unit": "क्षेत्र एकक", "guntha": "गुंठा", "acre": "एकर",
+            "area": "शेताचे क्षेत्र", "mode": "उपचार प्रकार",
+            "organic": "🌱 सेंद्रिय", "chemical": "🧪 रासायनिक",
+            "water": "एकूण पाण्याचे प्रमाण", "pumps": "१५ लि. फवारणी टाकी",
+            "pump_unit": "टाक्या", "pump_one": "टाकी", "per_pump": "प्रति पूर्ण १५ लि. टाकी",
+            "neem": "कडुनिंब तेल (३ मिली/लि.)", "fung": "बुरशीनाशक (२ ग्रॅम किंवा मिली/लि.)",
+            "ml": "मिली", "l": "लि.", "gml": "ग्रॅम / मिली", "kgl": "किग्रॅ / लि.",
+            "note": "१ एकर = ४० गुंठे. पाणी: २०० लि./एकर.",
+            "boost": " तीव्रता ३५% पेक्षा जास्त असल्याने पाणी १.२५ पट धरले आहे.",
+            "tip": "कडुनिंब तेलात १ मिली/लि. द्रव साबण मिसळा. लेबल वाचा व संरक्षक साहित्य वापरा.",
+        }
+    else:
+        T = {
+            "title": "🧮 Acre / Guntha Spray & Dosage Calculator",
+            "unit": "Area unit", "guntha": "Guntha", "acre": "Acre",
+            "area": "Farm area", "mode": "Treatment mode",
+            "organic": "🌱 Organic", "chemical": "🧪 Chemical",
+            "water": "Total water volume", "pumps": "15 L spray tanks",
+            "pump_unit": "tanks", "pump_one": "tank", "per_pump": "per full 15 L tank",
+            "neem": "Neem oil (3 ml/L)", "fung": "Fungicide (2 g or ml/L)",
+            "ml": "ml", "l": "L", "gml": "g / ml", "kgl": "kg / L",
+            "note": "1 Acre = 40 Guntha. Water: 200 L per acre.",
+            "boost": " Severity is above 35%, so water is scaled by 1.25x.",
+            "tip": "Add 1 ml/L liquid soap to neem oil. Read the product label and wear protective gear.",
+        }
+
+    section(T["title"])
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1:
+        unit = st.radio(T["unit"], ["guntha", "acre"], horizontal=True,
+                        format_func=lambda k: T[k], key="dose_unit")
+    with c2:
+        area = st.number_input(T["area"], min_value=0.1, max_value=10000.0, value=1.0, step=0.5, key="dose_area")
+    with c3:
+        mode = st.radio(T["mode"], ["organic", "chemical"], horizontal=True,
+                        format_func=lambda k: T[k], key="dose_mode")
+
+    acres = float(area) if unit == "acre" else float(area) / 40.0
+    water_l = 200.0 * acres * (1.25 if sev > 35.0 else 1.0)
+    pumps = max(1, math.ceil(water_l / 15.0))
+
+    if mode == "organic":
+        label = T["neem"]
+        total = 3.0 * water_l
+        total_txt = f"{total / 1000:.2f} {T['l']}" if total >= 1000 else f"{total:.0f} {T['ml']}"
+        pump_txt = f"{3.0 * 15:.0f} {T['ml']}"
+    else:
+        label = T["fung"]
+        total = 2.0 * water_l
+        total_txt = f"{total / 1000:.2f} {T['kgl']}" if total >= 1000 else f"{total:.0f} {T['gml']}"
+        pump_txt = f"{2.0 * 15:.0f} {T['gml']}"
+
+    boost = T["boost"] if sev > 35.0 else ""
+    md(
+        '<div class="dose-card"><div class="dose-grid">'
+        f'<div class="dose-item"><div class="dose-lab">{esc(T["water"])}</div><div class="dose-val">{water_l:,.0f} {esc(T["l"])}</div></div>'
+        f'<div class="dose-item"><div class="dose-lab">{esc(T["pumps"])}</div><div class="dose-val">{pumps} {esc(T["pump_unit"] if pumps != 1 else T["pump_one"])}</div></div>'
+        f'<div class="dose-item"><div class="dose-lab">{esc(label)}</div><div class="dose-val">{esc(total_txt)}</div>'
+        f'<div class="dose-lab">{esc(pump_txt)} {esc(T["per_pump"])}</div></div>'
+        '</div>'
+        f'<div class="dose-note">{esc(T["note"])}{esc(boost)}<br>{esc(T["tip"])}</div></div>'
+    )
+
+
 def render_report(crop, source, res, diag, info):
     render_voice_reader()
     is_mr = st.session_state.get("lang") == "मराठी"
@@ -2087,7 +2434,8 @@ def render_report(crop, source, res, diag, info):
         plan["prevention"] = tr_list(plan["prevention"])
 
     st.markdown('<span id="agro-report-start"></span>', unsafe_allow_html=True)
-    render_share_bar(crop, diag, res, plan, zone_disp, is_mr)
+
+    # ---- 1. What is it? ----
     md(
         f'<div class="diag" style="--c:{zcolor}"><div class="diag-left"><div class="diag-ico">{info["icon"]}</div>'
         f'<div><div class="diag-eyebrow">Diagnosis for {esc(crop)}</div><div class="diag-name">{esc(diag["name"])}</div>'
@@ -2097,13 +2445,13 @@ def render_report(crop, source, res, diag, info):
 
     k1, k2, k3, k4 = st.columns(4, gap="medium")
     with k1:
-        md(kpi("🩺", t("detected_cond", "Detected Condition"), esc(diag["name"]), f"Pattern: {esc(res['lesion_pattern'])} lesions", "#38BDF8", small=True))
+        md(kpi("🩺", t("detected_cond", "Detected Condition"), esc(diag["name"]), f"Pattern: {esc(res['lesion_pattern'])} lesions", "#0284C7", small=True))
     with k2:
         md(kpi("🔥", t("severity", "Infection Severity"), f"{res['severity']:.1f}%", f"{esc(zone_disp)} | {res['lesion_total']} lesions", zcolor))
     with k3:
         md(kpi("🌿", t("healthy_tissue", "Healthy Tissue"), f"{res['healthy']:.1f}%", "of detected leaf area", "#10B981"))
     with k4:
-        md(kpi("🎯", t("confidence", "Confidence Score"), f"{diag['conf']:.0f}%", "heuristic evidence score", "#A78BFA"))
+        md(kpi("🎯", t("confidence", "Confidence Score"), f"{diag['conf']:.0f}%", "heuristic evidence score", "#7C3AED"))
 
     g1, g2 = st.columns([1.2, 1], gap="medium")
     with g1:
@@ -2121,9 +2469,7 @@ def render_report(crop, source, res, diag, info):
         f'<div class="card"><div class="h">{esc(t("likely_cause", "Likely cause"))}</div><div>{esc(tr(info["causes"]))}</div></div></div>'
     )
 
-    section(t("diag_views", "🔍 Diagnostic Views"), "How AgroGuard separated the leaf from the background and located the damage.")
-    render_views(res)
-
+    # ---- 2. What do I do? ----
     section(t("treat_plan", "🧑‍🌾 Agronomist Treatment Plan"), f"Recommended actions for {diag['name']} at {zone.lower()} severity.")
     md(
         '<div class="grid2">'
@@ -2133,8 +2479,19 @@ def render_report(crop, source, res, diag, info):
         + plan_card("🛡️", t("prev_treat", "Preventive Measures for Surrounding Crops"), plan["prevention"], "#38BDF8")
         + "</div>"
     )
-    alert("info", t("safety_title", "Use chemicals responsibly"), t("safety_note", SAFETY_NOTE))
 
+    # ---- 3. How much do I spray? ----
+    render_dosage_calculator(res, is_mr)
+    alert("info", t("safety_title", "Use chemicals responsibly"), t("safety_note", SAFETY_NOTE))
+    st.markdown('<span id="agro-report-end"></span>', unsafe_allow_html=True)
+
+    # ---- 4. How was it analysed? (technical, collapsed) ----
+    with st.expander("🔍 " + t("diag_views_exp", "Diagnostic Views - how AgroGuard analysed this leaf"), expanded=False):
+        render_views(res)
+
+    # ---- 5. Share & download ----
+    section("📤 " + t("share_dl", "Share & Download"), "Send the report to a family member, an agronomist or a WhatsApp group.")
+    render_share_bar(crop, diag, res, plan, zone_disp, is_mr)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     d1, d2, _ = st.columns([1, 1, 1])
     with d1:
@@ -2150,7 +2507,188 @@ def render_report(crop, source, res, diag, info):
             file_name=f"agroguard_report_{stamp}.txt", mime="text/plain", key="dl_report_txt",
         )
     st.caption("Tip: open the .html report in a browser and use Print > Save as PDF for a PDF copy.")
-    st.markdown('<span id="agro-report-start"></span>', unsafe_allow_html=True)
+
+
+def _lc_slide_svg(n, kind):
+    """One botanical illustration (inline SVG, no external files)."""
+    bg = {"healthy": ("#ECFDF5", "#BBF7D0"), "blight": ("#FFF7ED", "#D9F99D"),
+          "mildew": ("#F0FDFA", "#BBF7D0"), "chlorosis": ("#FEFCE8", "#D9F99D")}[kind]
+    leaf_stops = ('<stop offset="0" stop-color="#4ADE80"/><stop offset="0.55" stop-color="#FDE047"/><stop offset="1" stop-color="#FACC15"/>'
+                  if kind == "chlorosis" else
+                  '<stop offset="0" stop-color="#86EFAC"/><stop offset="1" stop-color="#15803D"/>')
+    leaf = "M-140 20 C-120 -60 0 -80 140 -50 C120 30 30 80 -60 70 C-100 66 -135 50 -140 20 Z"
+    veins = "M-90 27 L-72 -22 M-45 21 L-20 -42 M5 8 L40 -40 M-75 33 L-58 62 M-25 25 L2 62 M30 -2 L66 30"
+    extra = ""
+    if kind == "blight":
+        for cx, cy, r in [(-40, 0, 17), (32, -24, 13), (74, -6, 10), (-2, 36, 11)]:
+            extra += (f'<circle cx="{cx}" cy="{cy}" r="{r + 8}" fill="#FACC15" opacity=".65"/>'
+                      f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#92400E"/>'
+                      f'<circle cx="{cx}" cy="{cy}" r="{r * 0.66:.1f}" fill="none" stroke="#451A03" stroke-width="1.6"/>'
+                      f'<circle cx="{cx}" cy="{cy}" r="{r * 0.28:.1f}" fill="#451A03"/>')
+        extra += ('<rect x="-66" y="-28" width="52" height="56" rx="4" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-dasharray="7 4"/>'
+                  '<text x="-66" y="-33" font-size="13" font-weight="800" fill="#EF4444" font-family="Arial,sans-serif">N</text>')
+    elif kind == "mildew":
+        for cx, cy, rx, ry in [(-30, -8, 30, 18), (45, -22, 22, 14), (20, 30, 24, 14), (80, 4, 14, 10)]:
+            extra += f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="#F8FAFC" opacity=".92"/>'
+        extra += ('<rect x="-64" y="-30" width="68" height="46" rx="4" fill="none" stroke="#06B6D4" stroke-width="2.5" stroke-dasharray="7 4"/>'
+                  '<text x="-64" y="-35" font-size="13" font-weight="800" fill="#0891B2" font-family="Arial,sans-serif">M</text>')
+    elif kind == "chlorosis":
+        extra += ('<ellipse cx="70" cy="-14" rx="42" ry="26" fill="#FDE047" opacity=".75"/>'
+                  '<rect x="28" y="-44" width="94" height="58" rx="4" fill="none" stroke="#EAB308" stroke-width="2.5" stroke-dasharray="7 4"/>'
+                  '<text x="28" y="-49" font-size="13" font-weight="800" fill="#CA8A04" font-family="Arial,sans-serif">C</text>')
+    return (
+        f'<svg viewBox="0 0 800 190" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        f'<defs><linearGradient id="lcBg{n}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{bg[0]}"/><stop offset="1" stop-color="{bg[1]}"/></linearGradient>'
+        f'<linearGradient id="lcLf{n}" x1="0" y1="1" x2="1" y2="0">{leaf_stops}</linearGradient></defs>'
+        f'<rect width="800" height="190" fill="url(#lcBg{n})"/>'
+        f'<circle cx="690" cy="40" r="62" fill="#FFFFFF" opacity=".35"/><circle cx="120" cy="170" r="70" fill="#FFFFFF" opacity=".28"/>'
+        f'<g transform="translate(700 150) rotate(-35)" opacity=".55"><path d="M0 0C10-30 40-40 70-30C60 0 30 12 0 0Z" fill="#4ADE80"/></g>'
+        f'<g transform="translate(610 28) rotate(25) scale(.6)" opacity=".5"><path d="{leaf}" fill="#86EFAC"/></g>'
+        f'<g transform="translate(470 98) rotate(-8)">'
+        f'<path d="{leaf}" fill="#000" opacity=".10" transform="translate(5 9)"/>'
+        f'<path d="{leaf}" fill="url(#lcLf{n})"/>'
+        f'<path d="{veins}" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".45"/>'
+        f'<path d="M-135 30C-60 20 40 -10 130 -45" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity=".7" fill="none"/>'
+        f'{extra}</g></svg>'
+    )
+
+
+def _render_svg_carousel(is_mr=False):
+    """Built-in SVG fallback carousel (used when the slides/ folder is empty or missing)."""
+    slides = [
+        ("healthy", "Healthy Foliage", "निरोगी पाने", "Healthy · 0-5%"),
+        ("blight", "Early Blight Detection", "लवकर येणारा करपा ओळख", "Necrosis · red box"),
+        ("mildew", "Powdery Mildew Scan", "भुरी रोग तपासणी", "Mildew · cyan box"),
+        ("chlorosis", "Chlorosis Check", "पाने पिवळी पडणे तपासणी", "Chlorosis · yellow box"),
+    ]
+    parts = []
+    for i, (kind, en, mr, tag) in enumerate(slides, 1):
+        parts.append(
+            f'<div class="lc-slide">{_lc_slide_svg(i, kind)}'
+            f'<div class="lc-cap"><span class="lc-tag">{esc(tag)}</span>'
+            f'<div class="lc-t">{esc(en)}</div><div class="lc-m">{esc(mr)}</div></div></div>'
+        )
+    dots = "".join(f'<span class="lc-dot" style="animation-delay:{d}s"></span>' for d in (0, 4, 8, 12))
+    hint = "पानाचा फोटो अपलोड करा" if is_mr else "Upload a leaf photo to begin"
+    md(
+        '<div class="lc notranslate" translate="no">' + "".join(parts)
+        + f'<div class="lc-foot">{esc(hint)} {dots}</div></div>'
+    )
+
+
+SLIDES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "slides")
+SLIDE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+MAX_SLIDES = 6
+# file-name keywords -> (English caption, Marathi caption). Example file: slides/early_blight.jpg
+SLIDE_CAPTIONS = [
+    ("powdery_mildew", "Powdery Mildew Scan", "भुरी रोग तपासणी"),
+    ("downy_mildew", "Downy Mildew Scan", "केवडा रोग तपासणी"),
+    ("early_blight", "Early Blight Detection", "लवकर येणारा करपा ओळख"),
+    ("late_blight", "Late Blight Detection", "उशिरा येणारा करपा ओळख"),
+    ("leaf_curl", "Leaf Curl Virus", "पाने गुंडाळणे (विषाणू)"),
+    ("leaf_spot", "Leaf Spot Detection", "पानावरील ठिपके ओळख"),
+    ("bacterial", "Bacterial Leaf Spot", "जिवाणूजन्य ठिपके"),
+    ("chlorosis", "Chlorosis Check", "पाने पिवळी पडणे तपासणी"),
+    ("mildew", "Powdery Mildew Scan", "भुरी रोग तपासणी"),
+    ("blight", "Blight Detection", "करपा रोग ओळख"),
+    ("rust", "Rust Disease Scan", "तांबेरा रोग तपासणी"),
+    ("healthy", "Healthy Foliage", "निरोगी पाने"),
+]
+
+
+def _slide_caption(stem):
+    key = stem.lower().replace("-", "_").replace(" ", "_").lstrip("0123456789_")
+    for word, en, mr in SLIDE_CAPTIONS:
+        if word in key:
+            return en, mr
+    nice = key.replace("_", " ").strip().title() or "Leaf sample"
+    return nice, "नमुना पान"
+
+
+def _slides_signature():
+    try:
+        names = sorted(n for n in os.listdir(SLIDES_DIR) if n.lower().endswith(SLIDE_EXTS))[:MAX_SLIDES]
+    except OSError:
+        return ()
+    sig = []
+    for n in names:
+        try:
+            info = os.stat(os.path.join(SLIDES_DIR, n))
+            sig.append((n, int(info.st_mtime), info.st_size))
+        except OSError:
+            continue
+    return tuple(sig)
+
+
+@st.cache_data(show_spinner=False)
+def _load_slides(signature):
+    """Reads slides/ images, shrinks them to <= 900 px wide and returns [(file stem, base64 jpeg)]."""
+    out = []
+    for name, _mtime, _size in signature:
+        try:
+            img = Image.open(os.path.join(SLIDES_DIR, name))
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            w, h = img.size
+            if w > 900:
+                img = img.resize((900, max(1, int(h * 900.0 / w))))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=82, optimize=True)
+            out.append((os.path.splitext(name)[0], base64.b64encode(buf.getvalue()).decode("ascii")))
+        except Exception:  # noqa: BLE001 - skip unreadable files
+            continue
+    return out
+
+
+def render_leaf_carousel(is_mr=False):
+    """Auto-sliding carousel of the images in slides/ (pure CSS crossfade). Falls back to the built-in SVG slides."""
+    slides = _load_slides(_slides_signature())
+    if not slides:
+        _render_svg_carousel(is_mr)
+        return
+    n = len(slides)
+    per = 4.0
+    total = per * n
+    p = 100.0 / n
+    hint = "पानाचा फोटो अपलोड करा" if is_mr else "Upload a leaf photo to begin"
+    parts, dots, css = [], "", ""
+    if n > 1:
+        css = (
+            f"@keyframes lc-fade-{n}{{0%{{opacity:0;transform:scale(1.04)}}{p * 0.16:.2f}%{{opacity:1}}"
+            f"{p:.2f}%{{opacity:1;transform:scale(1)}}{p * 1.2:.2f}%{{opacity:0}}100%{{opacity:0;transform:scale(1)}}}}"
+            f"@keyframes lc-dot-{n}{{0%{{background:#16A34A;transform:scale(1.35)}}{p:.2f}%{{background:#16A34A;transform:scale(1.35)}}"
+            f"{p + 0.1:.2f}%{{background:#A7F3D0;transform:scale(1)}}100%{{background:#A7F3D0;transform:scale(1)}}}}"
+        )
+    for i, (stem, b64) in enumerate(slides):
+        en, mr = _slide_caption(stem)
+        anim = (f"animation:lc-fade-{n} {total:.0f}s infinite both;animation-delay:{i * per:.0f}s"
+                if n > 1 else "animation:none;opacity:1")
+        parts.append(
+            f'<div class="lc-slide" style="{anim}"><img class="lc-img" alt="" src="data:image/jpeg;base64,{b64}">'
+            f'<div class="lc-cap"><span class="lc-tag">Sample {i + 1}/{n}</span>'
+            f'<div class="lc-t">{esc(en)}</div><div class="lc-m">{esc(mr)}</div></div></div>'
+        )
+        if n > 1:
+            dots += f'<span class="lc-dot" style="animation:lc-dot-{n} {total:.0f}s infinite both;animation-delay:{i * per:.0f}s"></span>'
+    md(
+        (f"<style>{css}</style>" if css else "")
+        + '<div class="lc notranslate" translate="no">' + "".join(parts)
+        + f'<div class="lc-foot">{esc(hint)} {dots}</div></div>'
+    )
+
+
+def render_leaf_preview(img_bytes, name, is_mr=False):
+    """Framed thumbnail of the selected / captured leaf (replaces the carousel in the same spot)."""
+    try:
+        card = st.container(key="leaf_preview_card")
+    except TypeError:  # older Streamlit without container keys
+        card = st.container()
+    with card:
+        md(f'<div class="panel-title" style="margin-top:0">{"🖼️ निवडलेले पान" if is_mr else "🖼️ Leaf preview"}</div>')
+        _a, _b, _c = st.columns([1, 2.2, 1])
+        with _b:
+            call_stretch(st.image, img_bytes)
+        label = "फाईल / स्रोत" if is_mr else "File / source"
+        md(f'<div class="lp-cap">📎 {label}: {esc(name or "Leaf image")}</div>')
 
 
 def view_scanner():
@@ -2158,7 +2696,6 @@ def view_scanner():
     left, right = st.columns([1.35, 1], gap="large")
 
     with right:
-        crop = st.selectbox("🌾 Crop type", CROPS, key="scan_crop")
         md(
             '<div class="card"><div class="h">Tips for a reliable scan</div><ul>'
             "<li>Photograph one leaf in daylight, filling at least a quarter of the frame.</li>"
@@ -2166,9 +2703,19 @@ def view_scanner():
             "<li>Keep the camera steady and in focus; upper surface facing the camera.</li>"
             "<li>Live camera needs HTTPS or localhost and browser permission.</li></ul></div>"
         )
+        md(
+            '<div class="card" style="margin-top:12px"><div class="h">What you will get</div><ul>'
+            "<li>Disease name, severity score and confidence</li>"
+            "<li>Organic and chemical treatment plan</li>"
+            "<li>Acre / Guntha spray and dosage calculator</li>"
+            "<li>Voice report and share options in English and Marathi</li></ul></div>"
+        )
         use_demo = st.checkbox("🧪 Use built-in demo leaf (no photo handy)", key="use_demo")
 
     with left:
+        md('<div class="stp"><span class="stp-n">1</span>Choose your crop</div>')
+        crop = st.selectbox("🌾 Crop type", CROPS, key="scan_crop", label_visibility="collapsed")
+        md('<div class="stp"><span class="stp-n">2</span>Add a leaf photo</div>')
         mode = st.radio(
             "Input method", ["📁 Upload leaf image", "📷 Live camera capture"],
             horizontal=True, key="scan_mode", label_visibility="collapsed",
@@ -2179,6 +2726,18 @@ def view_scanner():
         else:
             file = st.camera_input("Capture a leaf photo", key="scan_camera")
             source = "Camera"
+
+        _is_mr = st.session_state.get("lang") == "मराठी"
+        if file is not None:
+            render_leaf_preview(
+                file.getvalue(),
+                getattr(file, "name", None) if source == "Upload" else "Camera capture",
+                _is_mr,
+            )
+        elif use_demo:
+            render_leaf_preview(make_demo_leaf(), "Built-in demo leaf", _is_mr)
+        else:
+            render_leaf_carousel(_is_mr)
 
     if file is not None:
         data = file.getvalue()
@@ -2197,11 +2756,15 @@ def view_scanner():
     if not res["ok"]:
         alert("warn", "No leaf detected", res["reason"] + " Try another photo with a clearly visible green leaf.")
         return
-
+    if source != "Demo leaf":
+        bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        if not render_quality_gate(bgr, is_mr=(st.session_state.get("lang") == "मराठी")):
+            return
     diag = diagnose(res, crop)
     info = DISEASES[diag["name"]]
     log_scan(make_sig(data, crop, source), source, crop, diag, res)
     render_report(crop, source, res, diag, info)
+    st.caption("✅ This scan was saved to the History tab.")
 
 
 # =============================================================================
@@ -2284,7 +2847,7 @@ def view_batch():
     with k3:
         md(kpi("📉", "Average Severity", f"{avg_sev:.1f}%", f"{esc(zone)} zone", zcolor))
     with k4:
-        md(kpi("🩺", "Dominant Condition", esc(dominant), f"Worst leaf: {esc(worst['file'])}", "#38BDF8", small=True))
+        md(kpi("🩺", "Dominant Condition", esc(dominant), f"Worst leaf: {esc(worst['file'])}", "#0284C7", small=True))
 
     c1, c2 = st.columns([1, 1.3], gap="medium")
     with c1:
@@ -2298,7 +2861,7 @@ def view_batch():
         fig.update_layout(
             barmode="stack", height=270, margin=dict(l=10, r=10, t=36, b=10), paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)", font=CHART_FONT,
-            title=dict(text="Leaf Area Breakdown (%)", font=dict(size=15, color="#94A3B8"), x=0.5),
+            title=dict(text="Leaf Area Breakdown (%)", font=dict(size=15, color="#475569"), x=0.5),
             yaxis=dict(range=[0, 100], gridcolor="rgba(148,163,184,.15)"), legend=dict(orientation="h", y=-0.2),
         )
         plotly_show(fig, "bar_batch")
@@ -2437,8 +3000,8 @@ def view_about():
     md(html_table(
         ["Severity", "Zone", "Meaning"],
         [
-            ["0 - 5%", pill("Healthy", "#10B981"), "No treatment needed; keep scouting"],
-            ["5 - 25%", pill("Mild", "#A3E635"), "Remove affected leaves, start organic control"],
+            ["0 - 5%", pill("Healthy", "#059669"), "No treatment needed; keep scouting"],
+            ["5 - 25%", pill("Mild", "#65A30D"), "Remove affected leaves, start organic control"],
             ["25 - 50%", pill("Moderate", "#F59E0B"), "Start full treatment programme and repeat sprays"],
             ["Above 50%", pill("Critical", "#EF4444"), "Urgent treatment; consider removing worst plants"],
         ],
@@ -2474,10 +3037,24 @@ def render_hero():
         f"""
 <div class="hero">
   <div class="hero-left">
-    <div class="logo">🌿</div>
+    <div class="logo">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="agLeaf" x1="8" y1="40" x2="40" y2="8" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#BEF264"/>
+            <stop offset="1" stop-color="#FFFFFF"/>
+          </linearGradient>
+        </defs>
+        <path d="M6 14V9a3 3 0 0 1 3-3h5M34 6h5a3 3 0 0 1 3 3v5M42 34v5a3 3 0 0 1-3 3h-5M14 42H9a3 3 0 0 1-3-3v-5" stroke="#ECFCCB" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M13 33C12 21 20 12 35 12c0 14-8 22-20 22-.8 0-1.5 0-2-.1z" fill="url(#agLeaf)"/>
+        <path d="M14 34c6-6 11-11 17-17" stroke="#047857" stroke-width="2" stroke-linecap="round"/>
+        <path d="M21 27l-1-6M26 22l-.5-5M25 27l5 .5" stroke="#047857" stroke-width="1.6" stroke-linecap="round" opacity=".75"/>
+      </svg>
+    </div>
     <div>
       <div class="hero-title">AgroGuard <span class="ai">AI</span><span class="badge">{APP_VERSION}</span></div>
       <div class="hero-sub">Crop disease detection, severity analysis and smart recommendations</div>
+      <div class="hero-chips"><span>Offline OpenCV engine</span><span>English + मराठी</span><span>Voice report</span><span>Acre / Guntha dosage</span></div>
     </div>
   </div>
   <div class="status"><span class="dot"></span>System online | OpenCV {cv2.__version__}</div>
@@ -2489,30 +3066,31 @@ def render_hero():
 def main():
     init_state()
     inject_css()
-    render_hero()
-    _, lang_col = st.columns([3.5, 1.5])
+    top_l, lang_col = st.columns([3, 2])
+    with top_l:
+        md('<div class="topbar-note">🌾 Smart crop-health assistant for farmers</div>')
     with lang_col:
         st.radio("🌐 Language", ["English", "मराठी"], horizontal=True, key="lang", label_visibility="collapsed")
         inject_marathi_translator()
-    
+    render_hero()
+
     tabs = st.tabs([
-        t("tab1", "🔬 Live Leaf Scanner"),
-        t("tab2", "📊 Multi-Image Field Batch Analysis"),
-        t("tab3", "📚 Crop Disease Encyclopedia"),
-        t("tab4", "ℹ️ System Architecture & About"),
+        t("tab1", "🔬 Leaf Scanner"),
+        t("tab2", "📊 Field Batch"),
+        t("tab3", "📚 Encyclopedia"),
+        t("tab4", "🗂️ History"),
+        t("tab5", "ℹ️ About"),
     ])
     with tabs[0]:
         view_scanner()
-        history_slot = st.container()
     with tabs[1]:
         view_batch()
     with tabs[2]:
         view_encyclopedia()
-    with tabs[3]:
+    with tabs[4]:
         view_about()
-
-    # rendered last so scans logged by the batch tab in this run also appear
-    with history_slot:
+    # History is rendered after the scanner and batch tabs have run, so every scan from this run is listed
+    with tabs[3]:
         render_history()
 
     md('<div class="foot">AgroGuard AI | Engineering Design and Innovation project | For educational & decision-support use only</div>')
